@@ -46,12 +46,16 @@
             background: var(--secondary-color);
             padding: 20px;
             border-radius: 6px;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
 
         .form-group {
             display: flex;
             flex-direction: column;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
         }
 
         label {
@@ -80,6 +84,12 @@
             background-color: #1e3d6b;
         }
 
+        button:disabled {
+            background-color: #cbd5e1;
+            color: #94a3b8;
+            cursor: not-allowed;
+        }
+
         .btn-add {
             grid-column: 1 / -1;
             padding: 12px;
@@ -87,6 +97,15 @@
         }
         .btn-add:hover {
             background-color: #27ae60;
+        }
+
+        /* &Aacute;rea de Filtro */
+        .filtro-container {
+            background: #fff;
+            border: 2px solid var(--secondary-color);
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
         }
 
         /* Tabela de Dados */
@@ -97,7 +116,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
+            margin-top: 10px;
         }
 
         th, td {
@@ -136,7 +155,7 @@
             padding: 6px 10px;
             font-size: 12px;
         }
-        .btn-lock:hover {
+        .btn-lock:hover:not(:disabled) {
             background-color: #c0392b;
         }
 
@@ -151,7 +170,7 @@
             font-size: 12px;
             margin-right: 4px;
         }
-        .btn-edit:hover {
+        .btn-edit:hover:not(:disabled) {
             background-color: #d35400;
         }
 
@@ -160,7 +179,7 @@
             padding: 6px 10px;
             font-size: 12px;
         }
-        .btn-delete:hover {
+        .btn-delete:hover:not(:disabled) {
             background-color: #a0281e;
         }
     </style>
@@ -183,6 +202,11 @@
             <input type="date" id="admissao" required>
         </div>
 
+        <div class="form-group full-width">
+            <label for="funcao">Fun&ccedil;&atilde;o</label>
+            <input type="text" id="funcao" required placeholder="Ex: Administrativo, Setor Tecnico...">
+        </div>
+
         <div class="form-group">
             <label for="opcao1">Op&ccedil;&atilde;o de M&ecirc;s 1</label>
             <select id="opcao1" required></select>
@@ -201,12 +225,20 @@
         <button type="submit" id="btnSalvar" class="btn-add">&#10133; Adicionar Funcion&aacute;rio &agrave; Lista</button>
     </form>
 
+    <div class="filtro-container">
+        <div class="form-group">
+            <label for="filtroFuncao">🔍 Filtrar por Fun&ccedil;&atilde;o</label>
+            <input type="text" id="filtroFuncao" oninput="filtrarTabela()" placeholder="Digite uma fun&ccedil;&atilde;o para buscar na tabela...">
+        </div>
+    </div>
+
     <div class="table-container">
         <table>
             <thead>
                 <tr>
                     <th>Nome</th>
                     <th>Admiss&atilde;o</th>
+                    <th>Fun&ccedil;&atilde;o</th>
                     <th>Op&ccedil;&atilde;o 1</th>
                     <th>Op&ccedil;&atilde;o 2</th>
                     <th>Op&ccedil;&atilde;o 3</th>
@@ -222,15 +254,17 @@
 
 <script>
     // --- CONFIGURA&Ccedil;&Atilde;O ---
-    const SENHA_SUPERVISOR = "159753"; // Senha mantida conforme seu arquivo original
+    const SENHA_SUPERVISOR = "159753"; 
 
-    // Lista de meses convertida para evitar erros de acentua&ccedil;&atilde;o
     const meses = [
         "Janeiro", "Fevereiro", "Mar\u00E7o", "Abril", "Maio", "Junho",
         "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
     ];
 
     let funcionarios = JSON.parse(localStorage.getItem('funcionarios_data')) || [];
+    
+    // Rastreia quais linhas estão desbloqueadas no momento
+    let linhasDesbloqueadas = {};
 
     function preencherMeses() {
         const selects = ['opcao1', 'opcao2', 'opcao3'];
@@ -258,10 +292,16 @@
 
         funcionarios.forEach((func, index) => {
             const tr = document.createElement('tr');
+            
+            // Verifica o estado atual de bloqueio para esta linha específica
+            const estaDesbloqueado = linhasDesbloqueadas[index] === true;
+            const disabledAttr = estaDesbloqueado ? '' : 'disabled';
+            const iconeCadeado = estaDesbloqueado ? '&#128275;' : '&#128274;';
 
             tr.innerHTML = `
                 <td><strong>${func.nome}</strong></td>
                 <td>${formatarData(func.admissao)}</td>
+                <td class="col-funcao">${func.funcao || ''}</td>
                 <td>${func.opcao1}</td>
                 <td>${func.opcao2}</td>
                 <td>${func.opcao3}</td>
@@ -272,16 +312,19 @@
                            value="${func.dataDefinida || ''}" 
                            id="input-sup-${index}" 
                            oninput="atualizarValor(${index}, this.value)"
-                           disabled>
-                    <button class="btn-lock" id="btn-lock-${index}" onclick="alternarBloqueio(${index})">&#128274;</button>
+                           ${disabledAttr}>
+                    <button class="btn-lock" id="btn-lock-${index}" onclick="alternarBloqueio(${index})">${iconeCadeado}</button>
                 </td>
                 <td class="action-cell">
-                    <button class="btn-edit" onclick="editarFuncionario(${index})">&#9998; Editar</button>
-                    <button class="btn-delete" onclick="excluirFuncionario(${index})">&#128465; Excluir</button>
+                    <button class="btn-edit" id="btn-edit-${index}" onclick="editarFuncionario(${index})" ${disabledAttr}>&#9998; Editar</button>
+                    <button class="btn-delete" id="btn-delete-${index}" onclick="excluirFuncionario(${index})" ${disabledAttr}>&#128465; Excluir</button>
                 </td>
             `;
             tbody.appendChild(tr);
         });
+        
+        // Reaplica o filtro caso haja algum texto no campo de busca
+        filtrarTabela();
     }
 
     document.getElementById('feriasForm').addEventListener('submit', function(e) {
@@ -292,6 +335,7 @@
         const dadosFuncionario = {
             nome: document.getElementById('nome').value,
             admissao: document.getElementById('admissao').value,
+            funcao: document.getElementById('funcao').value,
             opcao1: document.getElementById('opcao1').value,
             opcao2: document.getElementById('opcao2').value,
             opcao3: document.getElementById('opcao3').value,
@@ -302,6 +346,10 @@
             funcionarios.push(dadosFuncionario);
         } else {
             funcionarios[editIndex] = dadosFuncionario;
+            
+            // Trava a linha novamente após salvar a edição por segurança
+            delete linhasDesbloqueadas[editIndex];
+            
             document.getElementById('editIndex').value = "-1";
             document.getElementById('btnSalvar').className = "btn-add";
             document.getElementById('btnSalvar').innerHTML = "&#10133; Adicionar Funcion&aacute;rio &agrave; Lista";
@@ -314,10 +362,14 @@
     });
 
     function editarFuncionario(index) {
+        // Bloqueio redundante via JS
+        if (!linhasDesbloqueadas[index]) return;
+
         const func = funcionarios[index];
         
         document.getElementById('nome').value = func.nome;
         document.getElementById('admissao').value = func.admissao;
+        document.getElementById('funcao').value = func.funcao || '';
         document.getElementById('opcao1').value = func.opcao1;
         document.getElementById('opcao2').value = func.opcao2;
         document.getElementById('opcao3').value = func.opcao3;
@@ -332,9 +384,13 @@
     }
 
     function excluirFuncionario(index) {
+        // Bloqueio redundante via JS
+        if (!linhasDesbloqueadas[index]) return;
+
         const confirmar = confirm("Tem certeza que deseja excluir este funcion\u00E1rio?");
         if (confirmar) {
             funcionarios.splice(index, 1);
+            delete linhasDesbloqueadas[index]; // Limpa histórico de travas
             salvarDados();
             renderizarTabela();
             
@@ -347,34 +403,53 @@
     }
 
     function alternarBloqueio(index) {
-        const input = document.getElementById(`input-sup-${index}`);
-        const btn = document.getElementById(`btn-lock-${index}`);
+        const estaDesbloqueado = linhasDesbloqueadas[index] === true;
 
-        if (!input.disabled) {
-            input.disabled = true;
-            btn.innerHTML = "&#128274;";
+        if (estaDesbloqueado) {
+            // Se já estava aberto, bloqueia de volta
+            delete linhasDesbloqueadas[index];
             salvarDados();
+            renderizarTabela();
             return;
         }
 
-        const senhaInserida = prompt("Digite a senha:");
+        const senhaInserida = prompt("Digite a senha do supervisor para liberar esta linha:");
         
         if (senhaInserida === SENHA_SUPERVISOR) {
-            input.disabled = false;
-            btn.innerHTML = "&#128275;";
+            // Marca a linha como ativa/desbloqueada
+            linhasDesbloqueadas[index] = true;
+            renderizarTabela();
             
+            const input = document.getElementById(`input-sup-${index}`);
             setTimeout(() => input.focus(), 50);
             
             input.onkeydown = function(e) {
                 if(e.key === 'Enter') {
-                    input.disabled = true;
-                    btn.innerHTML = "&#128274;";
+                    delete linhasDesbloqueadas[index];
                     salvarDados();
+                    renderizarTabela();
                 }
             }
         } else if (senhaInserida !== null) {
             alert("Senha incorreta! Acesso negado.");
         }
+    }
+
+    function filtrarTabela() {
+        const termoFiltro = document.getElementById('filtroFuncao').value.toLowerCase();
+        const linhas = document.querySelectorAll('#tabelaFuncionarios tr');
+
+        linhas.forEach(linha => {
+            const celulaFuncao = linha.querySelector('.col-funcao');
+            if (celulaFuncao) {
+                const textoFuncao = celulaFuncao.textContent.toLowerCase();
+                if (textoFuncao.includes(termoFiltro)) {
+                    linha.style.display = '';
+                } else {
+                    linha.style.display = 'none';
+                }
+            }
+        });
     }
 
     function atualizarValor(index, valor) {
