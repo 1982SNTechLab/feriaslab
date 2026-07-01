@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle de F&eacute;rias</title>
+    <title>Controle de Férias</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+    
     <style>
         :root {
             --primary-color: #2b579a;
@@ -13,6 +16,7 @@
             --text-color: #333;
             --edit-color: #f39c12;
             --delete-color: #c0392b;
+            --print-color: #9b59b6;
         }
 
         body {
@@ -38,7 +42,7 @@
             margin-bottom: 30px;
         }
 
-        /* Formul&aacute;rio de Cadastro */
+        /* Formulário de Cadastro */
         .form-cadastro {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -99,13 +103,35 @@
             background-color: #27ae60;
         }
 
-        /* &Aacute;rea de Filtro */
+        /* Área de Filtro e Ações Globais */
         .filtro-container {
             background: #fff;
             border: 2px solid var(--secondary-color);
             padding: 15px;
             border-radius: 6px;
             margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .filtro-container .form-group {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .btn-print {
+            background-color: var(--print-color);
+            padding: 11px 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            height: fit-content;
+        }
+        .btn-print:hover {
+            background-color: #8e44ad;
         }
 
         /* Tabela de Dados */
@@ -135,7 +161,7 @@
             background-color: #f9f9f9;
         }
 
-        /* &Aacute;rea do Supervisor */
+        /* Área do Supervisor */
         .supervisor-cell {
             background-color: #fff9e6;
             display: flex;
@@ -159,7 +185,7 @@
             background-color: #c0392b;
         }
 
-        /* Bot&otilde;es de A&ccedil;&atilde;o */
+        /* Botões de Ação */
         .action-cell {
             white-space: nowrap;
         }
@@ -187,49 +213,50 @@
 <body>
 
 <div class="container">
-    <h1>Controle de F&eacute;rias</h1>
+    <h1>Controle de Férias</h1>
 
     <form id="feriasForm" class="form-cadastro">
         <input type="hidden" id="editIndex" value="-1">
 
         <div class="form-group">
-            <label for="nome">Nome do Funcion&aacute;rio</label>
+            <label for="nome">Nome do Funcionário</label>
             <input type="text" id="nome" required placeholder="Ex: Joao Silva">
         </div>
         
         <div class="form-group">
-            <label for="admissao">Data de Admiss&atilde;o</label>
+            <label for="admissao">Data de Admissão</label>
             <input type="date" id="admissao" required>
         </div>
 
         <div class="form-group full-width">
-            <label for="funcao">Fun&ccedil;&atilde;o</label>
+            <label for="funcao">Função</label>
             <input type="text" id="funcao" required placeholder="Ex: Administrativo, Setor Tecnico...">
         </div>
 
         <div class="form-group">
-            <label for="opcao1">Op&ccedil;&atilde;o de M&ecirc;s 1</label>
+            <label for="opcao1">Opção de Mês 1</label>
             <select id="opcao1" required></select>
         </div>
 
         <div class="form-group">
-            <label for="opcao2">Op&ccedil;&atilde;o de M&ecirc;s 2</label>
+            <label for="opcao2">Opção de Mês 2</label>
             <select id="opcao2" required></select>
         </div>
 
         <div class="form-group">
-            <label for="opcao3">Op&ccedil;&atilde;o de M&ecirc;s 3</label>
+            <label for="opcao3">Opção de Mês 3</label>
             <select id="opcao3" required></select>
         </div>
 
-        <button type="submit" id="btnSalvar" class="btn-add">&#10133; Adicionar Funcion&aacute;rio &agrave; Lista</button>
+        <button type="submit" id="btnSalvar" class="btn-add">&#10133; Adicionar Funcionário à Lista</button>
     </form>
 
     <div class="filtro-container">
         <div class="form-group">
-            <label for="filtroFuncao">🔍 Filtrar por Fun&ccedil;&atilde;o</label>
-            <input type="text" id="filtroFuncao" oninput="filtrarTabela()" placeholder="Digite uma fun&ccedil;&atilde;o para buscar na tabela...">
+            <label for="filtroFuncao">🔍 Filtrar por Função</label>
+            <input type="text" id="filtroFuncao" oninput="filtrarTabela()" placeholder="Digite uma função para buscar na tabela...">
         </div>
+        <button class="btn-print" onclick="gerarPDF()">🖨️ Imprimir Relatório PDF</button>
     </div>
 
     <div class="table-container">
@@ -237,13 +264,13 @@
             <thead>
                 <tr>
                     <th>Nome</th>
-                    <th>Admiss&atilde;o</th>
-                    <th>Fun&ccedil;&atilde;o</th>
-                    <th>Op&ccedil;&atilde;o 1</th>
-                    <th>Op&ccedil;&atilde;o 2</th>
-                    <th>Op&ccedil;&atilde;o 3</th>
-                    <th>In&iacute;cio das F&eacute;rias</th>
-                    <th>A&ccedil;&otilde;es</th>
+                    <th>Admissão</th>
+                    <th>Função</th>
+                    <th>Opção 1</th>
+                    <th>Opção 2</th>
+                    <th>Opção 3</th>
+                    <th>Início das Férias</th>
+                    <th>Ações</th>
                 </tr>
             </thead>
             <tbody id="tabelaFuncionarios">
@@ -253,17 +280,16 @@
 </div>
 
 <script>
-    // --- CONFIGURA&Ccedil;&Atilde;O ---
+    // --- CONFIGURAÇÃO ---
     const SENHA_SUPERVISOR = "159753"; 
 
     const meses = [
-        "Janeiro", "Fevereiro", "Mar\u00E7o", "Abril", "Maio", "Junho",
+        "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
         "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
     ];
 
     let funcionarios = JSON.parse(localStorage.getItem('funcionarios_data')) || [];
     
-    // Rastreia quais linhas estão desbloqueadas no momento
     let linhasDesbloqueadas = {};
 
     function preencherMeses() {
@@ -293,7 +319,6 @@
         funcionarios.forEach((func, index) => {
             const tr = document.createElement('tr');
             
-            // Verifica o estado atual de bloqueio para esta linha específica
             const estaDesbloqueado = linhasDesbloqueadas[index] === true;
             const disabledAttr = estaDesbloqueado ? '' : 'disabled';
             const iconeCadeado = estaDesbloqueado ? '&#128275;' : '&#128274;';
@@ -308,7 +333,7 @@
                 <td class="supervisor-cell">
                     <input type="text" 
                            class="supervisor-input" 
-                           placeholder="Ex: 15 de Mar\u00E7o" 
+                           placeholder="Ex: 15 de Março" 
                            value="${func.dataDefinida || ''}" 
                            id="input-sup-${index}" 
                            oninput="atualizarValor(${index}, this.value)"
@@ -323,7 +348,6 @@
             tbody.appendChild(tr);
         });
         
-        // Reaplica o filtro caso haja algum texto no campo de busca
         filtrarTabela();
     }
 
@@ -346,13 +370,11 @@
             funcionarios.push(dadosFuncionario);
         } else {
             funcionarios[editIndex] = dadosFuncionario;
-            
-            // Trava a linha novamente após salvar a edição por segurança
             delete linhasDesbloqueadas[editIndex];
             
             document.getElementById('editIndex').value = "-1";
             document.getElementById('btnSalvar').className = "btn-add";
-            document.getElementById('btnSalvar').innerHTML = "&#10133; Adicionar Funcion&aacute;rio &agrave; Lista";
+            document.getElementById('btnSalvar').innerHTML = "&#10133; Adicionar Funcionário à Lista";
             document.getElementById('btnSalvar').style.backgroundColor = "var(--success-color)";
         }
 
@@ -362,7 +384,6 @@
     });
 
     function editarFuncionario(index) {
-        // Bloqueio redundante via JS
         if (!linhasDesbloqueadas[index]) return;
 
         const func = funcionarios[index];
@@ -377,27 +398,26 @@
         document.getElementById('editIndex').value = index;
         
         const btnSalvar = document.getElementById('btnSalvar');
-        btnSalvar.innerHTML = "&#128190; Salvar Altera&ccedil;&otilde;es";
+        btnSalvar.innerHTML = "&#128190; Salvar Alterações";
         btnSalvar.style.backgroundColor = "var(--edit-color)";
         
         window.scrollTo({top: 0, behavior: 'smooth'});
     }
 
     function excluirFuncionario(index) {
-        // Bloqueio redundante via JS
         if (!linhasDesbloqueadas[index]) return;
 
-        const confirmar = confirm("Tem certeza que deseja excluir este funcion\u00E1rio?");
+        const confirmar = confirm("Tem certeza que deseja excluir este funcionário?");
         if (confirmar) {
             funcionarios.splice(index, 1);
-            delete linhasDesbloqueadas[index]; // Limpa histórico de travas
+            delete linhasDesbloqueadas[index];
             salvarDados();
             renderizarTabela();
             
             document.getElementById('feriasForm').reset();
             document.getElementById('editIndex').value = "-1";
             const btnSalvar = document.getElementById('btnSalvar');
-            btnSalvar.innerHTML = "&#10133; Adicionar Funcion&aacute;rio &agrave; Lista";
+            btnSalvar.innerHTML = "&#10133; Adicionar Funcionário à Lista";
             btnSalvar.style.backgroundColor = "var(--success-color)";
         }
     }
@@ -406,7 +426,6 @@
         const estaDesbloqueado = linhasDesbloqueadas[index] === true;
 
         if (estaDesbloqueado) {
-            // Se já estava aberto, bloqueia de volta
             delete linhasDesbloqueadas[index];
             salvarDados();
             renderizarTabela();
@@ -416,7 +435,6 @@
         const senhaInserida = prompt("Digite a senha do supervisor para liberar esta linha:");
         
         if (senhaInserida === SENHA_SUPERVISOR) {
-            // Marca a linha como ativa/desbloqueada
             linhasDesbloqueadas[index] = true;
             renderizarTabela();
             
@@ -459,6 +477,84 @@
 
     function salvarDados() {
         localStorage.setItem('funcionarios_data', JSON.stringify(funcionarios));
+    }
+
+    // --- NOVA FUNÇÃO: GERAR PDF AGRUPADO POR FUNÇÃO ---
+    function gerarPDF() {
+        if (funcionarios.length === 0) {
+            alert("Não há dados na tabela para exportar.");
+            return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        // Título Principal do Documento
+        doc.setFont("Helvetica", "bold");
+        doc.setFontSize(18);
+        doc.setTextColor(43, 87, 154); // Cor #2b579a
+        doc.text("Relatório Geral de Controle de Férias", 14, 20);
+        
+        // Data de emissão
+        doc.setFontSize(10);
+        doc.setFont("Helvetica", "normal");
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 27);
+
+        // Agrupando funcionários por Função/Setor
+        const agrupadoPorFuncao = {};
+        funcionarios.forEach(func => {
+            const funcaoNome = (func.funcao || "Não Especificada").trim().toUpperCase();
+            if (!agrupadoPorFuncao[funcaoNome]) {
+                agrupadoPorFuncao[funcaoNome] = [];
+            }
+            agrupadoPorFuncao[funcaoNome].push(func);
+        });
+
+        let posY = 35;
+
+        // Gerar tabelas separadas para cada grupo de função
+        Object.keys(agrupadoPorFuncao).sort().forEach(funcao => {
+            // Verifica espaço restante na folha antes de printar o cabeçalho do grupo
+            if (posY > 250) {
+                doc.addPage();
+                posY = 20;
+            }
+
+            // Subtítulo do Setor/Função
+            doc.setFont("Helvetica", "bold");
+            doc.setFontSize(13);
+            doc.setTextColor(51, 51, 51);
+            doc.text(`SETOR / FUNÇÃO: ${funcao}`, 14, posY);
+            posY += 4;
+
+            // Mapeando dados das linhas para este setor específico
+            const dadosTabela = agrupadoPorFuncao[funcao].map(f => [
+                f.nome,
+                formatarData(f.admissao),
+                f.dataDefinida || "Não Definido"
+            ]);
+
+            // Renderiza a tabela do setor
+            doc.autoTable({
+                startY: posY,
+                head: [['Nome do Funcionário', 'Data de Admissão', 'Início das Férias']],
+                body: dadosTabela,
+                theme: 'striped',
+                headStyles: { fillColor: [43, 87, 154], fontStyle: 'bold' },
+                styles: { fontSize: 10, cellPadding: 4 },
+                margin: { left: 14, right: 14 },
+                didDrawPage: function(data) {
+                    posY = data.cursor.y + 12; // Atualiza a posição Y para a próxima seção
+                }
+            });
+            
+            // Sincroniza a posição atual de Y após a impressão da tabela autotable
+            posY = doc.lastAutoTable.finalY + 12;
+        });
+
+        // Baixa o arquivo PDF
+        doc.save(`relatorio-ferias-${new Date().toISOString().slice(0,10)}.pdf`);
     }
 
     preencherMeses();
